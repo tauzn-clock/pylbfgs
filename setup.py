@@ -3,8 +3,8 @@ import numpy.distutils.misc_util
 
 setup(
     ext_modules=[Extension(
-    	'pyelwon',
-    	sources=['pyelwon.c'],
+    	'pylbfgs',
+    	sources=['pylbfgs.c'],
     	libraries=['lbfgs'],
     	library_dirs=['/usr/local/lib'],
     	include_dirs=['/usr/local/include'].extend(
