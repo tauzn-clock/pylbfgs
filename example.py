@@ -13,8 +13,8 @@ SCALE = 0.1 # fraction to scale the original image
 SAMPLE = 0.4 # fraction of the scaled image to randomly sample
 ORTHANTWISE_C = 2 # coeefficient for the L1 norm of variables
 ORIG_IMAGE_PATH = 'test/testimage.png'
-A_FILE_PATH = 'test/a_matrix.dat'
-B_FILE_PATH = 'test/b_vector.dat'
+A_FILE_PATH = 'test/a_matrix.npy'
+B_FILE_PATH = 'test/b_vector.npy'
 
 
 def dct2(x):
@@ -50,7 +50,6 @@ def kron_rows(A, B, I, f=None):
         if f is None:
             K[j,:] = row
         else:
-            # array('d', row.squeeze()).tofile(f)
             row.tofile(f)
 
     if f is None:
