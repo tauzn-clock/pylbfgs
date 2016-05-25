@@ -5,13 +5,25 @@ import numpy as np
 import scipy.fftpack as spfft
 import scipy.ndimage as spimg
 import matplotlib.pyplot as plt
-import pylbfgs as l1
+from pylbfgs import owlqn
 
 
-EVAL_METHOD = 1 # 1: in-memory version, 2: file-based version
-SCALE = 0.1 # fraction to scale the original image
-SAMPLE = 0.4 # fraction of the scaled image to randomly sample
-ORTHANTWISE_C = 2 # coeefficient for the L1 norm of variables
+# Evaluation method (always use #1)
+# 1: in-memory dct2 version (fast, efficient for all size images)
+# 2: in-memory kron version (fast, but only for images smaller than 100x100)
+# 3: file-based kron version (experimental, slow, lots of disk space required [Order(rows x cols x samples)])
+EVAL_METHOD = 1
+
+# Fraction to scale the original image
+SCALE = 0.5
+
+# Fraction of the scaled image to randomly sample
+SAMPLE = 0.2
+
+# Coeefficient for the L1 norm of variables (see OWL-QN algorithm)
+ORTHANTWISE_C = 5
+
+# File paths
 ORIG_IMAGE_PATH = 'test/testimage.png'
 A_FILE_PATH = 'test/a_matrix.npy'
 B_FILE_PATH = 'test/b_vector.npy'
@@ -63,10 +75,46 @@ def progress(x, g, fx, xnorm, gnorm, step, k, ls):
     return 0
 
 
-_A_matrix = None # reference the dct matrix operator A here
-_b_vector = None # reference the sample vector b here
+_image_dims = None # track target image dimensions here
+_ri_vector = None # reference the random sampling indices here
+_b_vector = None # reference the sampled vector b here
 def evaluate(x, g, step):
     """An in-memory evaluation callback."""
+
+    # we want to return two things: 
+    # (1) the norm squared of the residuals, sum((Ax-b).^2), and
+    # (2) the gradient 2*A'(Ax-b)
+
+    # expand x columns-first
+    x2 = x.reshape((_image_dims[1], _image_dims[0])).T
+
+    # Ax is just the inverse 2D dct of x2
+    Ax2 = idct2(x2)
+
+    # stack columns and extract samples
+    Ax = Ax2.T.flat[_ri_vector].reshape(_b_vector.shape)
+
+    # calculate the residual Ax-b and its 2-norm squared
+    Axb = Ax - _b_vector
+    fx = np.sum(np.power(Axb, 2))
+
+    # project residual vector (k x 1) onto blank image (ny x nx)
+    Axb2 = np.zeros(x2.shape)
+    Axb2.T.flat[_ri_vector] = Axb # fill columns-first
+
+    # A'(Ax-b) is just the 2D dct of Axb2
+    AtAxb2 = 2 * dct2(Axb2)
+    AtAxb = AtAxb2.T.reshape(x.shape) # stack columns
+
+    # copy over the gradient vector
+    np.copyto(g, AtAxb)
+
+    return fx
+
+
+_A_matrix = None # reference the dct matrix operator A here
+def evaluate_kron(x, g, step):
+    """An in-memory evaluation callback using the kronecker product."""
 
     # calculate the 2-norm squared of the residual vector
     p = np.dot(_A_matrix, x)
@@ -80,8 +128,8 @@ def evaluate(x, g, step):
     return fx
 
 
-def evaluate_from_file(x, g, step):
-    """A slower, but more memory efficient, evaluation callback."""
+def evaluate_kron_from_file(x, g, step):
+    """A slower, but more memory efficient, evaluation callback using the kronecker product."""
 
     # read in b data from file
     with open(B_FILE_PATH, 'rb') as f:
@@ -114,6 +162,8 @@ def evaluate_from_file(x, g, step):
 
 def main():
     
+    global _b_vector, _A_matrix, _image_dims, _ri_vector
+
     # read image in grayscale, then downscale it
     Xorig = spimg.imread(ORIG_IMAGE_PATH, flatten=True, mode='L') # read in grayscale
     X = spimg.zoom(Xorig, SCALE)
@@ -122,12 +172,32 @@ def main():
     # take random samples of image, store them in a vector b
     k = round(nx * ny * SAMPLE)
     ri = np.random.choice(nx * ny, k, replace=False) # random sample of indices
+    ri = np.sort(ri) # necessary??
     b = X.T.flat[ri].astype(float) # important: cast to 64 bit
 
     if EVAL_METHOD == 1:
 
+        # This method evaluates the objective function sum((Ax-b).^2) and its 
+        # gradient without ever actually generating A (which can be massive).
+        # Our ability to do this stems from our knowledge that Ax is just the 
+        # sampled idct2 of the spectral image (x in matrix form).
+
+        # save image dims, sampling vector, and b vector and to global vars
+        _image_dims = (ny, nx)
+        _ri_vector = ri
+        _b_vector = np.expand_dims(b, axis=1)
+
+        # perform the L1 minimization in memory
+        Xat2 = owlqn(nx*ny, evaluate, progress, ORTHANTWISE_C)
+
+
+    elif EVAL_METHOD == 2:
+
+        # This method computes a dct2 matrix operator A (a kronecker product)
+        # and uses it directly to evaluate the objective function. However,
+        # as the size of the target image gets bigger, A gets unmanageable.
+
         # save refs to global vars
-        global _b_vector, _A_matrix
         _b_vector = np.expand_dims(b, axis=1)
         _A_matrix = kron_rows(
             spfft.idct(np.identity(nx), norm='ortho', axis=0), 
@@ -136,10 +206,18 @@ def main():
             )
 
         # perform the L1 minimization in memory
-        Xat2 = l1.owlqn(nx*ny, evaluate, progress, ORTHANTWISE_C)
+        Xat2 = owlqn(nx*ny, evaluate_kron, progress, ORTHANTWISE_C)
 
 
-    elif EVAL_METHOD == 2:
+    elif EVAL_METHOD == 3:
+
+        # This method computes a dct2 matrix operator A (a kronecker product),
+        # potentially very large, and saves it to file. The evaluation method
+        # then loads the data from file each time it is called to perform the 
+        # calculations. This method is very memory efficient, however the 
+        # kronecker matrix grows on an order of (nx*ny)^2, so the file can 
+        # become massive. I/O operations also slow this method down considerably.
+        # Don't use this method -- it is here mainly for education.
 
         # save the b samples to file
         with open(B_FILE_PATH, 'wb') as f:
@@ -160,7 +238,8 @@ def main():
                 )
 
         # perform the L1 minimization from file
-        Xat2 = l1.owlqn(nx*ny, evaluate_from_file, progress, ORTHANTWISE_C)
+        Xat2 = owlqn(nx*ny, evaluate_kron_from_file, progress, ORTHANTWISE_C)
+
 
     # transform the output back into the spatial domain
     Xat = Xat2.reshape(nx, ny).T # stack columns
