@@ -172,7 +172,6 @@ def main():
     # take random samples of image, store them in a vector b
     k = round(nx * ny * SAMPLE)
     ri = np.random.choice(nx * ny, k, replace=False) # random sample of indices
-    ri = np.sort(ri) # necessary??
     b = X.T.flat[ri].astype(float) # important: cast to 64 bit
 
     if EVAL_METHOD == 1:
