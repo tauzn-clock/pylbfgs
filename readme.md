@@ -52,7 +52,7 @@ Define an evaluation callback to provide the objective function and gradient eva
         return 0.0
 
 
-Optionally define a callback to receive the progress of the optimization process:
+Optionally, define a callback to receive the progress of the optimization process:
 
     def progress(x, g, fx, xnorm, gnorm, step, k, ls):
         # Print variables to screen or file or whatever. Return zero to 
@@ -73,7 +73,7 @@ Refer to the [libLBFGS API][libLBFGS_API] for more info about what each of the c
 Examples
 --------
 
-See the `example.py` script for an advanced example in which we use compressed sensing to reconstruct a sparsely sampled image.
+See the *example.py* script for an advanced example in which we use compressed sensing to reconstruct a sparsely sampled image.
 
 
 
