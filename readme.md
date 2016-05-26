@@ -73,7 +73,7 @@ Refer to the [libLBFGS API][libLBFGS_API] for more info about what each of the c
 Examples
 --------
 
-See the *example.py* script for an advanced example in which we use compressed sensing to reconstruct a sparsely sampled image.
+See the *example.py* script for an advanced example in which we use compressed sensing to reconstruct a sparsely sampled image. A more thorough example of compressed sensing (using PyLBFGS) can be found on my weblog [here][blog_post].
 
 
 
@@ -90,3 +90,4 @@ PyLBFGS was written by Robert Taylor and is licensed under the MIT license.
 
 [liblbfgs]: http://chokkan.org/software/liblbfgs/
 [libLBFGS_API]: http://www.chokkan.org/software/liblbfgs/index.html
+[blog_post]: http://www.pyrunner.com/weblog/B/
