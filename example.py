@@ -172,7 +172,6 @@ def main():
     # take random samples of image, store them in a vector b
     k = round(nx * ny * SAMPLE)
     ri = np.random.choice(nx * ny, k, replace=False) # random sample of indices
-    ri = np.sort(ri) # necessary??
     b = X.T.flat[ri].astype(float) # important: cast to 64 bit
 
     if EVAL_METHOD == 1:
@@ -245,10 +244,17 @@ def main():
     Xat = Xat2.reshape(nx, ny).T # stack columns
     Xa = idct2(Xat)
 
+    # create images of mask (for visualization)
+    mask = np.zeros(X.shape)
+    mask.T.flat[ri] = 255
+    Xm = 255 * np.ones(X.shape)
+    Xm.T.flat[ri] = X.T.flat[ri]
+
     # display the result
-    f, ax = plt.subplots(1, 2, figsize=(14, 4))
-    ax[0].imshow(X, cmap='gray', interpolation='none')
-    ax[1].imshow(Xa, cmap='gray', interpolation='none')
+    f, ax = plt.subplots(1, 3, figsize=(14, 4))
+    ax[0].imshow(X, cmap='hot', interpolation='none')
+    ax[1].imshow(Xm, cmap='hot', interpolation='none')
+    ax[2].imshow(Xa, cmap='hot', interpolation='none')
     plt.show()
 
 
