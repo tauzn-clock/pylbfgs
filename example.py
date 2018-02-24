@@ -11,7 +11,8 @@ from pylbfgs import owlqn
 # Evaluation method (always use #1)
 # 1: in-memory dct2 version (fast, efficient for all size images)
 # 2: in-memory kron version (fast, but only for images smaller than 100x100)
-# 3: file-based kron version (experimental, slow, lots of disk space required [Order(rows x cols x samples)])
+# 3: file-based kron version (experimental, slow, lots of disk
+#    space required [Order(rows x cols x samples)])
 EVAL_METHOD = 1
 
 # Fraction to scale the original image
@@ -30,37 +31,42 @@ B_FILE_PATH = 'test/b_vector.npy'
 
 
 def dct2(x):
-    """Return 2D discrete cosine transform."""
-    return spfft.dct(spfft.dct(x.T, norm='ortho', axis=0).T, norm='ortho', axis=0)
+    """Return 2D discrete cosine transform.
+    """
+    return spfft.dct(
+        spfft.dct(x.T, norm='ortho', axis=0).T, norm='ortho', axis=0)
 
 
 def idct2(x):
-    """Return inverse 2D discrete cosine transform."""
-    return spfft.idct(spfft.idct(x.T, norm='ortho', axis=0).T, norm='ortho', axis=0)
+    """Return inverse 2D discrete cosine transform.
+    """
+    return spfft.idct(
+        spfft.idct(x.T, norm='ortho', axis=0).T, norm='ortho', axis=0)
 
 
 def kron_rows(A, B, I, f=None):
-    """Return individual rows of K=kron(A,B) if `f` is None. Otherwise \
-    save the matrix to file."""
+    """Return individual rows of K=kron(A,B) if `f` is None. Otherwise
+    save the matrix to file.
+    """
 
     # find row indices of A and B
     ma, na = A.shape
     mb, nb = B.shape
-    R = np.floor(I / mb).astype('int') # A row indices of interest
-    S = np.mod(I, mb) # B row indices of interest
+    R = np.floor(I / mb).astype('int')  # A row indices of interest
+    S = np.mod(I, mb)  # B row indices of interest
 
     # calculate kronecker product rows
     n = na * nb
     if f is None:
         K = np.zeros((I.size, n))
-        
-    for j,(r,s) in enumerate(zip(R, S)):
+
+    for j, (r, s) in enumerate(zip(R, S)):
         row = np.multiply(
-            np.kron(A[r,:], np.ones((1, nb))), 
-            np.kron(np.ones((1, na)), B[s,:])
+            np.kron(A[r, :], np.ones((1, nb))),
+            np.kron(np.ones((1, na)), B[s, :])
             )
         if f is None:
-            K[j,:] = row
+            K[j, :] = row
         else:
             row.tofile(f)
 
@@ -69,19 +75,22 @@ def kron_rows(A, B, I, f=None):
 
 
 def progress(x, g, fx, xnorm, gnorm, step, k, ls):
-    """Just display the current iteration."""
-
+    """Just display the current iteration.
+    """
     print('Iteration {}'.format(k))
     return 0
 
 
-_image_dims = None # track target image dimensions here
-_ri_vector = None # reference the random sampling indices here
-_b_vector = None # reference the sampled vector b here
-def evaluate(x, g, step):
-    """An in-memory evaluation callback."""
+_image_dims = None  # track target image dimensions here
+_ri_vector = None  # reference the random sampling indices here
+_b_vector = None  # reference the sampled vector b here
 
-    # we want to return two things: 
+
+def evaluate(x, g, step):
+    """An in-memory evaluation callback.
+    """
+
+    # we want to return two things:
     # (1) the norm squared of the residuals, sum((Ax-b).^2), and
     # (2) the gradient 2*A'(Ax-b)
 
@@ -100,11 +109,11 @@ def evaluate(x, g, step):
 
     # project residual vector (k x 1) onto blank image (ny x nx)
     Axb2 = np.zeros(x2.shape)
-    Axb2.T.flat[_ri_vector] = Axb # fill columns-first
+    Axb2.T.flat[_ri_vector] = Axb  # fill columns-first
 
     # A'(Ax-b) is just the 2D dct of Axb2
     AtAxb2 = 2 * dct2(Axb2)
-    AtAxb = AtAxb2.T.reshape(x.shape) # stack columns
+    AtAxb = AtAxb2.T.reshape(x.shape)  # stack columns
 
     # copy over the gradient vector
     np.copyto(g, AtAxb)
@@ -112,9 +121,12 @@ def evaluate(x, g, step):
     return fx
 
 
-_A_matrix = None # reference the dct matrix operator A here
+_A_matrix = None  # reference the dct matrix operator A here
+
+
 def evaluate_kron(x, g, step):
-    """An in-memory evaluation callback using the kronecker product."""
+    """An in-memory evaluation callback using the kronecker product.
+    """
 
     # calculate the 2-norm squared of the residual vector
     p = np.dot(_A_matrix, x)
@@ -129,7 +141,9 @@ def evaluate_kron(x, g, step):
 
 
 def evaluate_kron_from_file(x, g, step):
-    """A slower, but more memory efficient, evaluation callback using the kronecker product."""
+    """A slower, but more memory efficient, evaluation callback
+    using the kronecker product.
+    """
 
     # read in b data from file
     with open(B_FILE_PATH, 'rb') as f:
@@ -141,7 +155,7 @@ def evaluate_kron_from_file(x, g, step):
     Ax = np.zeros(b.shape)
     Atax = np.zeros(x.shape)
     Atb = np.zeros(x.shape)
-    
+
     # read in A data from file
     with open(A_FILE_PATH, 'rb') as f:
         for i in range(k):
@@ -161,24 +175,24 @@ def evaluate_kron_from_file(x, g, step):
 
 
 def main():
-    
+
     global _b_vector, _A_matrix, _image_dims, _ri_vector
 
     # read image in grayscale, then downscale it
-    Xorig = spimg.imread(ORIG_IMAGE_PATH, flatten=True, mode='L') # read in grayscale
+    Xorig = spimg.imread(ORIG_IMAGE_PATH, flatten=True, mode='L')
     X = spimg.zoom(Xorig, SCALE)
-    ny,nx = X.shape
+    ny, nx = X.shape
 
     # take random samples of image, store them in a vector b
     k = round(nx * ny * SAMPLE)
-    ri = np.random.choice(nx * ny, k, replace=False) # random sample of indices
-    b = X.T.flat[ri].astype(float) # important: cast to 64 bit
+    ri = np.random.choice(nx*ny, k, replace=False)  # random sample of indices
+    b = X.T.flat[ri].astype(float)  # important: cast to 64 bit
 
     if EVAL_METHOD == 1:
 
-        # This method evaluates the objective function sum((Ax-b).^2) and its 
+        # This method evaluates the objective function sum((Ax-b).^2) and its
         # gradient without ever actually generating A (which can be massive).
-        # Our ability to do this stems from our knowledge that Ax is just the 
+        # Our ability to do this stems from our knowledge that Ax is just the
         # sampled idct2 of the spectral image (x in matrix form).
 
         # save image dims, sampling vector, and b vector and to global vars
@@ -189,7 +203,6 @@ def main():
         # perform the L1 minimization in memory
         Xat2 = owlqn(nx*ny, evaluate, progress, ORTHANTWISE_C)
 
-
     elif EVAL_METHOD == 2:
 
         # This method computes a dct2 matrix operator A (a kronecker product)
@@ -199,7 +212,7 @@ def main():
         # save refs to global vars
         _b_vector = np.expand_dims(b, axis=1)
         _A_matrix = kron_rows(
-            spfft.idct(np.identity(nx), norm='ortho', axis=0), 
+            spfft.idct(np.identity(nx), norm='ortho', axis=0),
             spfft.idct(np.identity(ny), norm='ortho', axis=0),
             ri
             )
@@ -207,15 +220,15 @@ def main():
         # perform the L1 minimization in memory
         Xat2 = owlqn(nx*ny, evaluate_kron, progress, ORTHANTWISE_C)
 
-
     elif EVAL_METHOD == 3:
 
         # This method computes a dct2 matrix operator A (a kronecker product),
         # potentially very large, and saves it to file. The evaluation method
-        # then loads the data from file each time it is called to perform the 
-        # calculations. This method is very memory efficient, however the 
-        # kronecker matrix grows on an order of (nx*ny)^2, so the file can 
-        # become massive. I/O operations also slow this method down considerably.
+        # then loads the data from file each time it is called to perform the
+        # calculations. This method is very memory efficient, however the
+        # kronecker matrix grows on an order of (nx*ny)^2, so the file can
+        # become massive. I/O operations also slow this method down
+        # considerably.
         # Don't use this method -- it is here mainly for education.
 
         # save the b samples to file
@@ -226,12 +239,12 @@ def main():
         # create dct matrix operator A, saving it directly to file
         try:
             os.remove(A_FILE_PATH)
-        except: 
+        except:
             pass
         with open(A_FILE_PATH, 'w+b') as f:
             print('Writing {} values to {}'.format(nx * ny * k, A_FILE_PATH))
             kron_rows(
-                spfft.idct(np.identity(nx), norm='ortho', axis=0), 
+                spfft.idct(np.identity(nx), norm='ortho', axis=0),
                 spfft.idct(np.identity(ny), norm='ortho', axis=0),
                 ri, f
                 )
@@ -239,9 +252,8 @@ def main():
         # perform the L1 minimization from file
         Xat2 = owlqn(nx*ny, evaluate_kron_from_file, progress, ORTHANTWISE_C)
 
-
     # transform the output back into the spatial domain
-    Xat = Xat2.reshape(nx, ny).T # stack columns
+    Xat = Xat2.reshape(nx, ny).T  # stack columns
     Xa = idct2(Xat)
 
     # create images of mask (for visualization)
