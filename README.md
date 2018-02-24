@@ -14,24 +14,30 @@ Install
 
 1. Download [libLBFGS][libLBFGS] source code and install (see its README for extra info):
 
-        sudo apt-get install libtool automake
-        ./autogen.sh
-        ./configure --enable-sse2
-        make
-        make install
+    sudo apt install libtool automake
+    ./autogen.sh
+    ./configure --enable-sse2
+    make
+    sudo make install
 
-2. Install other PyLBFGS dependencies:
+2. Download or clone the PyLBFGS project:
 
-        pip install numpy
+    git clone https://rtaylor@bitbucket.org/rtaylor/pylbfgs.git
+    cd pylbfgs
 
+3. Setup and activate a virtual environment:
 
-3. Download PyLBFGS source code and install:
+    make venv
+    . .venv/bin/activate
 
-        python setup.py install
+4. Install the project:
 
-4. Alternatively, you can build in-place with:
+    python setup.py install
 
-        python setup.py build_ext -i
+5. Alternatively, build in-place:
+
+    python setup.py build_ext -i
+
 
 
 Basic Use
@@ -62,6 +68,7 @@ Optionally, define a callback to receive the progress of the optimization proces
 
 Run the OWL-QN algorithm. The result will be the minimum in vector form.
 
+    orthantwise_c = 5
     x = owlqn(size_of_x, evaluate, progress, orthantwise_c)
 
 
@@ -70,12 +77,14 @@ If you want to use the built-in progress callback, just pass `None`.
 Refer to the [libLBFGS API][libLBFGS_API] for more info about what each of the callback arguments mean.
 
 
+
 Examples
 --------
 
 See the *example.py* script for an advanced example in which we use compressed sensing to reconstruct a sparsely sampled image. A more thorough example of compressed sensing (using PyLBFGS) can be found on my weblog [here][blog_post].
 
-
+    pip install Pillow==5.0.0 scipy==1.0.0 matplotlib==2.1.2
+    python example.py
 
 
 
@@ -83,8 +92,6 @@ Author & License
 ----------------
 
 PyLBFGS was written by Robert Taylor and is licensed under the MIT license.
-
-
 
 
 
