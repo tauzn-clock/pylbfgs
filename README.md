@@ -14,29 +14,29 @@ Install
 
 1. Download [libLBFGS][libLBFGS] source code and install (see its README for extra info):
 
-    sudo apt install libtool automake
-    ./autogen.sh
-    ./configure --enable-sse2
-    make
-    sudo make install
+        sudo apt install libtool automake
+        ./autogen.sh
+        ./configure --enable-sse2
+        make
+        sudo make install
 
 2. Download or clone the PyLBFGS project:
 
-    git clone https://rtaylor@bitbucket.org/rtaylor/pylbfgs.git
-    cd pylbfgs
+        git clone https://rtaylor@bitbucket.org/rtaylor/pylbfgs.git
+        cd pylbfgs
 
 3. Setup and activate a virtual environment:
 
-    make venv
-    . .venv/bin/activate
+        make venv
+        . .venv/bin/activate
 
 4. Install the project:
 
-    python setup.py install
+        python setup.py install
 
 5. Alternatively, build in-place:
 
-    python setup.py build_ext -i
+        python setup.py build_ext -i
 
 
 
