@@ -5,7 +5,7 @@ PyLBFGS is a Python 3 wrapper of the [libLBFGS][libLBFGS] library -- a C port (w
 
 At this time, only the Orthant-Wise Limited-memory Quasi-Newton (OWL-QN) algorithm is exposed (although very little work would be required to expose the full [libLBFGS][libLBFGS] implementation).
 
-Also note that PyLBFGS has only been compiled and tested with Python 3 on a 64-bit Ubuntu machine. I'm not saying it won't work in other environments... but it's up to you.
+Also note that PyLBFGS has only been compiled and tested with Python 3 on a 64-bit Ubuntu machine. It should work in other environments... but tweaking the installation commands is a task left to the reader.
 
 
 
@@ -14,7 +14,7 @@ Install
 
 1. Download [libLBFGS][libLBFGS] source code and install (see its README for extra info):
 
-        sudo apt install libtool automake
+        sudo apt install libtool automake virtualenv
         ./autogen.sh
         ./configure --enable-sse2
         make
@@ -25,9 +25,9 @@ Install
         git clone https://rtaylor@bitbucket.org/rtaylor/pylbfgs.git
         cd pylbfgs
 
-3. Setup and activate a virtual environment:
+3. Setup and activate a virtual environment (modify the Python version if necessary):
 
-        make venv
+        virtualenv -p python3.6 --prompt="(pylbfgs) " .venv
         . .venv/bin/activate
 
 4. Install the project:
