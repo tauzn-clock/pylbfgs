@@ -17,9 +17,9 @@ ext_modules = [
         sources=['pylbfgs.c'],
         libraries=['lbfgs'],
         library_dirs=['/usr/local/lib'],
-        include_dirs=['/usr/local/include'].extend(
+        include_dirs=['/usr/local/include'] + (
             numpy.distutils.misc_util.get_numpy_include_dirs()
-            ),
+        ),
         runtime_library_dirs=['/usr/local/lib'],
         ),
     ]
