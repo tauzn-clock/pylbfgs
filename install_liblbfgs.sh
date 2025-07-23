@@ -1,5 +1,6 @@
 cd liblbfgs
-apt install libtool automake virtualenv
+apt update
+apt install -y libtool automake virtualenv
 ./autogen.sh
 ./configure --enable-sse2
 make
