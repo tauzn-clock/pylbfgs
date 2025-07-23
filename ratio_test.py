@@ -25,11 +25,19 @@ Xorig = np.array(Xorig, dtype=float)  # convert to float
 print('Original image shape: {}'.format(Xorig.shape))
 print('Original image max, min: {}, {}'.format(Xorig.max(), Xorig.min()))
 
-ratio = Xpred / Xorig
+ratio =  Xorig / Xpred
 ratio[Xorig == 0] = 0  # avoid division by zero
-print('Ratio image shape: {}'.format(ratio.shape))
 print('Ratio image max, min: {}, {}'.format(ratio.max(), ratio.min()))
+plt.imsave('ratio_image.png', ratio, cmap='gray')
 
 new_ratio = lbfgs_reconstruct_image(ratio)
-print('New ratio image shape: {}'.format(new_ratio.shape))
 print('New ratio image max, min: {}, {}'.format(new_ratio.max(), new_ratio.min()))
+
+final_depth = Xpred * new_ratio
+print('Final depth image max, min: {}, {}'.format(final_depth.max(), final_depth.min()))
+
+Image.fromarray(final_depth.astype(np.uint16)).save('final_depth_image.png')
+plt.imsave("vis.png", final_depth, cmap='gray')
+
+from metric import evaluateMetrics
+evaluateMetrics(Xorig, final_depth)
