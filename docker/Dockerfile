@@ -27,7 +27,7 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-RUN git clone --recursive https://github.com/tauzn-clock/pylbfgs
+RUN git clone --branch inpaint --recursive https://github.com/tauzn-clock/pylbfgs
 WORKDIR /pylbfgs
 RUN git submodule update --init --recursive
 RUN chmod +x ./install_liblbfgs.sh
