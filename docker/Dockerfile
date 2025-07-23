@@ -32,5 +32,5 @@ WORKDIR /pylbfgs
 RUN git submodule update --init --recursive
 RUN chmod +x ./install_liblbfgs.sh
 RUN ./install_liblbfgs.sh
-RUN pip3 install -r requirements.txt
+RUN pip3 install -r requirements.txt --break-system-packages
 RUN python3 setup.py build_ext --inplace
