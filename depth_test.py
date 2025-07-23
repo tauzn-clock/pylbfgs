@@ -99,3 +99,6 @@ print(Xa.max(), Xa.min())
 print('Reconstructed image shape: {}'.format(Xa.shape))
 
 Image.fromarray(Xa.astype(np.uint16)).save('reconstructed_image.png')
+
+from metric import evaluateMetrics
+evaluateMetrics(Xorig, Xa)
