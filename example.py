@@ -2,6 +2,7 @@
 
 import os
 import numpy as np
+from PIL import Image
 import scipy.fftpack as spfft
 import scipy.ndimage as spimg
 import matplotlib.pyplot as plt
@@ -179,7 +180,9 @@ def main():
     global _b_vector, _A_matrix, _image_dims, _ri_vector
 
     # read image in grayscale, then downscale it
-    Xorig = spimg.imread(ORIG_IMAGE_PATH, flatten=True, mode='L')
+    Xorig = Image.open(ORIG_IMAGE_PATH).convert('L')
+    Xorig = np.array(Xorig, dtype=float)  # convert to float
+    print('Original image shape: {}'.format(Xorig.shape))
     X = spimg.zoom(Xorig, SCALE)
     ny, nx = X.shape
 
