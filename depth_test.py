@@ -63,7 +63,7 @@ def progress(x, g, fx, xnorm, gnorm, step, k, ls):
 
 def lbfgs_reconstruct_image(Xorig):
     global _image_dims, _ri_vector, _b_vector
-    
+
     # Evaluation method (always use #1)
     # 1: in-memory dct2 version (fast, efficient for all size images)
     # 2: in-memory kron version (fast, but only for images smaller than 100x100)
@@ -94,7 +94,7 @@ def lbfgs_reconstruct_image(Xorig):
 
 if __name__ == "__main__":
     # File paths
-    ORIG_IMAGE_PATH = '/scratchdata/nyu_depth_crop/train/bedroom_0015/sync_depth_00000.png'
+    ORIG_IMAGE_PATH = "/scratchdata/nyu_depth_crop/train/bedroom_0004/sync_depth_00000.png"
 
     # read image in grayscale, then downscale it
     Xorig = Image.open(ORIG_IMAGE_PATH)
@@ -107,6 +107,8 @@ if __name__ == "__main__":
     print('Reconstructed image shape: {}'.format(Xa.shape))
 
     Image.fromarray(Xa.astype(np.uint16)).save('reconstructed_image.png')
+
+    plt.imsave('vis.png', Xa, cmap='gray')
 
     from metric import evaluateMetrics
     evaluateMetrics(Xorig, Xa)
