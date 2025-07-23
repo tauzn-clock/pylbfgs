@@ -30,4 +30,4 @@ RUN apt-get update && apt-get install -y \
 RUN git clone --recursive https://github.com/tauzn-clock/pylbfgs
 WORKDIR /pylbfgs
 RUN git submodule update --init --recursive
-RUN ./instal_liblbfgs.sh
+RUN ./install_liblbfgs.sh
