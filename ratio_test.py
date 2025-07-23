@@ -7,20 +7,21 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import cv2
 
-ORIG_IMAGE_PATH = "/scratchdata/nyu_depth_crop/train/bedroom_0004/sync_depth_00000.png"
+ORIG_IMAGE_PATH = "/scratchdata/outdoor_highres_unfiltered/rgb/100.png"
+DEPTH_IMAGE_PATH = "/scratchdata/outdoor_highres_unfiltered/depth/100.png"
 
 model = get_model()
 model.to("cuda:0")
 model.eval()
 
-raw_img = cv2.imread("/scratchdata/nyu_depth_crop/train/bedroom_0004/rgb_00000.jpg")
+raw_img = cv2.imread(ORIG_IMAGE_PATH)
 Xpred = model.infer_image(raw_img) # HxW depth map in meters in numpy
 Xpred *= 1000  # convert to mm
 print(Xpred.shape)
 print(Xpred.max(), Xpred.min())
 
 # read image in grayscale, then downscale it
-Xorig = Image.open(ORIG_IMAGE_PATH)
+Xorig = Image.open(DEPTH_IMAGE_PATH)
 Xorig = np.array(Xorig, dtype=float)  # convert to float
 print('Original image shape: {}'.format(Xorig.shape))
 print('Original image max, min: {}, {}'.format(Xorig.max(), Xorig.min()))
