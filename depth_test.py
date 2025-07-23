@@ -61,44 +61,52 @@ def progress(x, g, fx, xnorm, gnorm, step, k, ls):
     #print('Iteration {}'.format(k))
     return 0
 
-# Evaluation method (always use #1)
-# 1: in-memory dct2 version (fast, efficient for all size images)
-# 2: in-memory kron version (fast, but only for images smaller than 100x100)
-# 3: file-based kron version (experimental, slow, lots of disk
-#    space required [Order(rows x cols x samples)])
-EVAL_METHOD = 1
+def lbfgs_reconstruct_image(Xorig):
+    global _image_dims, _ri_vector, _b_vector
+    
+    # Evaluation method (always use #1)
+    # 1: in-memory dct2 version (fast, efficient for all size images)
+    # 2: in-memory kron version (fast, but only for images smaller than 100x100)
+    # 3: file-based kron version (experimental, slow, lots of disk
+    #    space required [Order(rows x cols x samples)])
+    EVAL_METHOD = 1
 
-# Coeefficient for the L1 norm of variables (see OWL-QN algorithm)
-ORTHANTWISE_C = 5
+    # Coeefficient for the L1 norm of variables (see OWL-QN algorithm)
+    ORTHANTWISE_C = 5
 
-# File paths
-ORIG_IMAGE_PATH = '/scratchdata/nyu_depth_crop/train/bedroom_0015/sync_depth_00000.png'
+    b = Xorig.T.flatten()  # flatten image to vector
+    mask = b > 0#np.random.choice(Xorig.shape[0]*Xorig.shape[1], 100000, replace=False)  # random sample of indices
+    b = b[mask]  # remove zero values
+    print('Flattened image shape: {}'.format(b.shape))
 
-# read image in grayscale, then downscale it
-Xorig = Image.open(ORIG_IMAGE_PATH)
-Xorig = np.array(Xorig, dtype=float)  # convert to float
-print('Original image shape: {}'.format(Xorig.shape))
-print('Original image max, min: {}, {}'.format(Xorig.max(), Xorig.min()))
+    # save image dims, sampling vector, and b vector and to global vars
+    _image_dims = (Xorig.shape[0], Xorig.shape[1])
+    _ri_vector = mask
+    _b_vector = np.expand_dims(b, axis=1)
 
-b = Xorig.T.flatten()  # flatten image to vector
-mask = b > 0#np.random.choice(Xorig.shape[0]*Xorig.shape[1], 100000, replace=False)  # random sample of indices
-b = b[mask]  # remove zero values
-print('Flattened image shape: {}'.format(b.shape))
+    # perform the L1 minimization in memory
+    Xat2 = owlqn(_image_dims[0] * _image_dims[1], evaluate, progress, ORTHANTWISE_C)
 
-# save image dims, sampling vector, and b vector and to global vars
-_image_dims = (Xorig.shape[0], Xorig.shape[1])
-_ri_vector = mask
-_b_vector = np.expand_dims(b, axis=1)
+    Xat = Xat2.reshape(_image_dims[1], _image_dims[0]).T  # stack columns
+    Xa = idct2(Xat)
 
-# perform the L1 minimization in memory
-Xat2 = owlqn(_image_dims[0] * _image_dims[1], evaluate, progress, ORTHANTWISE_C)
+    return Xa
 
-Xat = Xat2.reshape(_image_dims[1], _image_dims[0]).T  # stack columns
-Xa = idct2(Xat)
-print(Xa.max(), Xa.min())
-print('Reconstructed image shape: {}'.format(Xa.shape))
+if __name__ == "__main__":
+    # File paths
+    ORIG_IMAGE_PATH = '/scratchdata/nyu_depth_crop/train/bedroom_0015/sync_depth_00000.png'
 
-Image.fromarray(Xa.astype(np.uint16)).save('reconstructed_image.png')
+    # read image in grayscale, then downscale it
+    Xorig = Image.open(ORIG_IMAGE_PATH)
+    Xorig = np.array(Xorig, dtype=float)  # convert to float
+    print('Original image shape: {}'.format(Xorig.shape))
+    print('Original image max, min: {}, {}'.format(Xorig.max(), Xorig.min()))
 
-from metric import evaluateMetrics
-evaluateMetrics(Xorig, Xa)
+    Xa = lbfgs_reconstruct_image(Xorig)
+    print(Xa.max(), Xa.min())
+    print('Reconstructed image shape: {}'.format(Xa.shape))
+
+    Image.fromarray(Xa.astype(np.uint16)).save('reconstructed_image.png')
+
+    from metric import evaluateMetrics
+    evaluateMetrics(Xorig, Xa)
