@@ -60,3 +60,28 @@ def progress(x, g, fx, xnorm, gnorm, step, k, ls):
     """
     #print('Iteration {}'.format(k))
     return 0
+
+def rescale_ratio(depth, est):
+    """Rescale the depth map based on the estimated depth.
+
+    Args:
+        depth (np.ndarray): The original depth map.
+        est (np.ndarray): The estimated depth map.
+
+    Returns:
+        np.ndarray: The rescaled depth map.
+    """
+    ratio = depth / est
+    ri = ratio !=0
+    ratio[~ri] = 1
+    ratio -= 1
+    print("Ratio max, min:", ratio.max(), ratio.min())
+    ri = np.where(ri.flatten())[0]
+    b = ratio.T.flatten()[ri].astype(float)
+    ny, nx = ratio.shape
+
+    set_global_param(b, (ny, nx), ri)
+    
+    out = owlqn(nx * ny, evaluate, progress, 5)
+
+    return spfft.idctn(out.reshape((nx, ny)).T, norm='ortho') + 1
