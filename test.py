@@ -18,7 +18,6 @@ def idct2(x):
         spfft.idct(x.T, norm='ortho', axis=0).T, norm='ortho', axis=0)
 
 def evaluate(x, g, step):
-    print(x)
     """An in-memory evaluation callback.
     """
 
@@ -35,7 +34,6 @@ def evaluate(x, g, step):
 
     # Ax is just the inverse 2D dct of x2
     Ax2 = idct2(x2)
-    print("Ax2", Ax2)
 
     # stack columns and extract samples
     Ax = Ax2.T.flat[_ri_vector].reshape(_b_vector.shape)
@@ -57,6 +55,52 @@ def evaluate(x, g, step):
 
     return fx
 
+
+def evaluate_kron(x, g, step):
+    """An in-memory evaluation callback using the kronecker product.
+    """
+
+    # calculate the 2-norm squared of the residual vector
+    p = np.dot(_A_matrix, x)
+    fx = np.sum(np.power(_b_vector - p, 2))
+
+    # calculate the gradient vector
+    atax = np.dot(_A_matrix.T, p)
+    atb = np.dot(_A_matrix.T, _b_vector)
+    np.copyto(g, 2 * (atax - atb))
+
+    return fx
+
+
+def kron_rows(A, B, I, f=None):
+    """Return individual rows of K=kron(A,B) if `f` is None. Otherwise
+    save the matrix to file.
+    """
+
+    # find row indices of A and B
+    ma, na = A.shape
+    mb, nb = B.shape
+    R = np.floor(I / mb).astype('int')  # A row indices of interest
+    S = np.mod(I, mb)  # B row indices of interest
+
+    # calculate kronecker product rows
+    n = na * nb
+    if f is None:
+        K = np.zeros((I.size, n))
+
+    for j, (r, s) in enumerate(zip(R, S)):
+        row = np.multiply(
+            np.kron(A[r, :], np.ones((1, nb))),
+            np.kron(np.ones((1, na)), B[s, :])
+            )
+        if f is None:
+            K[j, :] = row
+        else:
+            row.tofile(f)
+
+    if f is None:
+        return K
+
 def progress(x, g, fx, xnorm, gnorm, step, k, ls):
     """Just display the current iteration.
     """
@@ -68,7 +112,7 @@ global _b_vector, _A_matrix, _image_dims, _ri_vector
 #X = np.array([[1,2,3,4],[2,4,6,8],[3,6,9,12]])
 #ri = np.array([[0,1,1,1],[1,0,0,1],[1,0,1,1]]).astype(bool).flatten()
 
-X = np.array([[1,2,1,2]])
+X = np.array([[1,1.1,1,1.1]]) * 100
 N = X.shape[1]  # number of columns
 arr = []
 for k in range(N):
@@ -81,6 +125,7 @@ arr = np.array(arr)*np.pi/(2*N)
 arr = 2 * np.cos(arr) / (2*N)**0.5  # custom DCT operation
 arr[0] /= 2**0.5  # adjust for the first element
 custom_dct = (arr @ X.T).T
+print("custom_dct:", custom_dct)
 
 arr = []
 for k in range(N):
@@ -92,21 +137,33 @@ arr = np.array(arr)*np.pi/(2*N)
 arr = 2 * np.cos(arr) / (2*N)**0.5
 arr[:,0] /= 2**0.5  # adjust for the first element
 custom_idct = (arr @ X.T).T
+print("custom_idct:", custom_idct)
 
-ri = np.array([[1,1,1,1]]).astype(bool).flatten()
-
+ri = np.array([[1,1,1,0]]).astype(bool).flatten()
+ri = np.where(ri)[0]  # Get the indices of the valid values
 b = X.T.flatten()[ri].astype(float)  # Valid values turned into column vector
 ny, nx = X.shape
 
-# save image dims, sampling vector, and b vector and to global vars
-_image_dims = (ny, nx)
-_ri_vector = ri
-_b_vector = np.expand_dims(b, axis=1)
-
 ORTHANTWISE_C = 5
 
-# perform the L1 minimization in memory
-Xat2 = owlqn(nx*ny, evaluate, progress, ORTHANTWISE_C)
+if True:
+    # save image dims, sampling vector, and b vector and to global vars
+    _image_dims = (ny, nx)
+    _ri_vector = ri
+    _b_vector = np.expand_dims(b, axis=1)
+
+    # perform the L1 minimization in memory
+    Xat2 = owlqn(nx*ny, evaluate, progress, ORTHANTWISE_C)
+else:
+    # save refs to global vars
+    _b_vector = np.expand_dims(b, axis=1)
+    _A_matrix = kron_rows(
+        spfft.idct(np.identity(nx), norm='ortho', axis=0),
+        spfft.idct(np.identity(ny), norm='ortho', axis=0),
+        ri
+        )
+    # perform the L1 minimization in memory
+    Xat2 = owlqn(nx*ny, evaluate_kron, progress, ORTHANTWISE_C)
 
 Xat = Xat2.reshape(nx, ny).T  # stack columns
 print("Xat:", Xat)
