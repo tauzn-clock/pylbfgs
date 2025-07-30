@@ -75,6 +75,7 @@ def rescale_ratio(depth, est):
     ri = ratio !=0
     ratio[~ri] = 1
     ratio -= 1
+    ratio *= 1000
     print("Ratio max, min:", ratio.max(), ratio.min())
     ri = np.where(ri.flatten())[0]
     b = ratio.T.flatten()[ri].astype(float)
