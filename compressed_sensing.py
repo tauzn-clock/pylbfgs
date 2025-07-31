@@ -61,7 +61,7 @@ def progress(x, g, fx, xnorm, gnorm, step, k, ls):
     #print('Iteration {}'.format(k))
     return 0
 
-def rescale_ratio(depth, est, ORTHANTWISE_C=5):
+def rescale_ratio(depth, est, ORTHANTWISE_C=5, relative_C=False):
     """Rescale the depth map based on the estimated depth.
 
     Args:
@@ -81,6 +81,9 @@ def rescale_ratio(depth, est, ORTHANTWISE_C=5):
     ny, nx = ratio.shape
 
     set_global_param(b, (ny, nx), ri)
+    
+    if relative_C:
+        ORTHANTWISE_C = np.mean(np.abs(b))
     
     out = owlqn(nx * ny, evaluate, progress, ORTHANTWISE_C)
 
