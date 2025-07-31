@@ -19,3 +19,5 @@ def evaluateMetrics(gt, pred):
     
     print("RMSE: ", rmse)
     print("MAE: ", mae)
+    
+    return [delta1, rmse, mae]
