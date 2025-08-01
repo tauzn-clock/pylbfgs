@@ -88,3 +88,17 @@ def rescale_ratio(depth, est, ORTHANTWISE_C=5, relative_C=None):
     out = owlqn(nx * ny, evaluate, progress, ORTHANTWISE_C)
 
     return spfft.idctn(out.reshape((nx, ny)).T, norm='ortho') + 1
+
+def rescale_ratio_proportional(depth, est):
+    mask = depth > 0
+    valid_depth = depth[mask]
+    valid_est = est[mask]
+
+    ratio = np.ones_like(depth)
+    multiplier = np.sum(valid_depth* valid_est) / np.sum(valid_est**2)
+
+    print("Multiplier:", multiplier)
+    
+    ratio *= multiplier
+
+    return ratio
