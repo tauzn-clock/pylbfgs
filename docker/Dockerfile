@@ -34,3 +34,6 @@ RUN chmod +x ./install_liblbfgs.sh
 RUN ./install_liblbfgs.sh
 RUN pip3 install -r requirements.txt
 RUN python3 setup.py build_ext --inplace
+
+RUN git clone https://github.com/DepthAnything/Depth-Anything-V2
+RUN cd Depth-Anything-V2 && pip3 install -r requirements.txt

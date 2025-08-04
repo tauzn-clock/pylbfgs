@@ -16,5 +16,5 @@ setup(
     name='PyLBFGS',
     version="0.2.0.16",
     ext_modules=ext_modules,
-    install_requires=["numpy>=2.3.1", "cython>=3.1.2"],
+    install_requires=["cython>=3.1.2"],
 )
