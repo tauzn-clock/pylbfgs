@@ -6,38 +6,39 @@ import matplotlib.pyplot as plt
 
 global _b_vector, _A_matrix, _image_dims, _ri_vector
 
-def dwt2_haar_recursive(arr):
+def dwt2_db_recursive(arr):
     coeffs = np.zeros_like(arr)
     height, width = arr.shape
     if height == 1 and width == 1:
         return arr
     
-    A, (H, V, D) = pywt.dwt2(arr, 'haar')
+    A, (H, V, D) = pywt.dwt2(arr, 'db2', mode='periodization')
     coeffs[:(height+1)//2, (width+1)//2:] = V[:(height+1)//2, :width - (width+1)//2]
     coeffs[(height+1)//2:, :(width+1)//2] = H[:height-(height+1)//2, :(width+1)//2]
     coeffs[(height+1)//2:, (width+1)//2:] = D[:height-(height+1)//2, :width - (width+1)//2]
-    A = dwt2_haar_recursive(A)
+    A = dwt2_db_recursive(A)
     coeffs[:(height+1)//2, :(width+1)//2] = A[:(height+1)//2, :(width+1)//2]
      
     return coeffs
 
-def idwt2_haar_recursive(coeffs):
+def idwt2_db_recursive(coeffs):
     
     height, width = coeffs.shape
+    print(height, width)
     if height == 1 and width == 1:
         return coeffs
     A = coeffs[:(height+1)//2, :(width+1)//2]
-    A = idwt2_haar_recursive(A)
+    A = idwt2_db_recursive(A)
     V = coeffs[:(height+1)//2, (width+1)//2:]
     H = coeffs[(height+1)//2:, :(width+1)//2]
     D = coeffs[(height+1)//2:, (width+1)//2:]
         
     # Pad H, V, D to match A
-    H = np.pad(H, ((0, A.shape[0] - H.shape[0]), (0, A.shape[1] - H.shape[1])), mode='constant')
-    V = np.pad(V, ((0, A.shape[0] - V.shape[0]), (0, A.shape[1] - V.shape[1])), mode='constant')
-    D = np.pad(D, ((0, A.shape[0] - D.shape[0]), (0, A.shape[1] - D.shape[1])), mode='constant')
+    H = np.pad(H, ((0, A.shape[0] - H.shape[0]), (0, A.shape[1] - H.shape[1])), mode='edge')
+    V = np.pad(V, ((0, A.shape[0] - V.shape[0]), (0, A.shape[1] - V.shape[1])), mode='edge')
+    D = np.pad(D, ((0, A.shape[0] - D.shape[0]), (0, A.shape[1] - D.shape[1])), mode='edge')
 
-    arr = pywt.idwt2((A, (H,V,D)), 'haar')
+    arr = pywt.idwt2((A, (H,V,D)), 'db2', mode='periodization')
     arr = arr[:height, :width]  # Ensure the output matches the original shape
     return arr
 
@@ -126,44 +127,29 @@ def rescale_ratio(depth, est, ORTHANTWISE_C=5, relative_C=None):
 
     return spfft.idctn(out.reshape((nx, ny)).T, norm='ortho') + 1
 
-test = np.array([[1, 2, 4,5,6,7],[5,7,8,4,6,7]])
-tmp = dwt2_haar_recursive(test)
-print(tmp)
-print(idwt2_haar_recursive(tmp))
-exit()
-
-#test = np.array([1,2,3,4,5])
-#print(pywt.dwt(test, 'haar'))
-#print(pywt.dwt(pywt.dwt(test, 'haar')[0], 'haar'))
-#exit()
+print(pywt.dwt2(np.array([[1, 2, 4,5,6,7],[5,7,8,4,6,7]]), 'db2', mode='periodization'))
 
 test = np.array([[1,2,3,4,5],
-                [5,6,7,8,6]], dtype=float)
+                 [6,7,8,9,10],
+                 [11,12,13,14,15],
+                [16,17,18,19,20],
+                [21,22,23,24,25]], dtype=float)
 mask = np.array([[1,1,1,0,1],
-                [1,1,0,1,1]], dtype=bool)
-
-ri = np.where(mask.T.flatten())[0]
-b = test.T.flatten()[ri].astype(float)
-ny, nx = test.shape
-
-set_global_param(b, (ny, nx), ri)
-
-out = owlqn(nx * ny, evaluate, progress, 0.00005)
-print(idwt2_haar_recursive(out.reshape((nx, ny)).T))
+                 [1,1,0,1,1],
+                 [1,1,1,1,1],
+                 [1,1,0,1,1],
+                 [0,1,1,1,0]], dtype=bool)
+test = np.array([[1, 2, 4,5,6,7],[5,7,8,4,6,7]])
+tmp = dwt2_db_recursive(test)
+print(tmp)
+print(idwt2_db_recursive(tmp))
+exit()
 
 test = Image.open("/scratchdata/depth_prompting_nyu/gt/0.png")
 test = np.array(test, dtype=float)
 print(test.shape)
-output = dwt2_haar_recursive(test)
+output = dwt2_db_recursive(test)
 print(output.max(), output.min()) 
 
 plt.imsave("input.png", test, cmap='gray')
 plt.imsave("output.png", np.log(abs(output)+1), cmap='gray')
-
-output[np.log(abs(output)+1) < 10] = 0
-plt.imsave("output2.png", output, cmap='gray')
-
-recover = idwt2_haar_recursive(output)
-print(recover.max(), recover.min())
-
-plt.imsave("recover.png", recover, cmap='gray')
