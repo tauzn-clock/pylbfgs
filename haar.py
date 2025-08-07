@@ -1,5 +1,4 @@
 from pylbfgs import owlqn
-import scipy.fft as spfft
 import numpy as np
 import pywt
 from PIL import Image
@@ -71,7 +70,7 @@ def evaluate(x, g, step):
     x2 = x.reshape((_image_dims[1], _image_dims[0])).T
 
     # Ax is just the inverse 2D dct of x2
-    Ax2 = spfft.idctn(x2, norm='ortho')
+    Ax2 = idwt2_haar_recursive(x2)
 
     # stack columns and extract samples
     Ax = Ax2.T.flat[_ri_vector].reshape(_b_vector.shape)
@@ -85,7 +84,7 @@ def evaluate(x, g, step):
     Axb2.T.flat[_ri_vector] = Axb  # fill columns-first
 
     # A'(Ax-b) is just the 2D dct of Axb2
-    AtAxb2 = 2 * spfft.dctn(Axb2, norm='ortho')
+    AtAxb2 = 2 * dwt2_haar_recursive(Axb2)
     AtAxb = AtAxb2.T.reshape(x.shape)  # stack columns
 
     # copy over the gradient vector
@@ -134,22 +133,19 @@ def rescale_ratio(depth, est, ORTHANTWISE_C=5, relative_C=None):
 #exit()
 
 test = np.array([[1,2,3,4,5],
-                [5,6,7,8,6],
-                [9,10,11,12,6],
-                [13,14,15,16,3],
-                [14,5,6,7,7]], dtype=float)
-mask = np.array([[1,1,1,0],
-                [0,1,0,1],
-                [1,0,1,0],
-                [0,1,0,1]], dtype=bool)
+                [5,6,7,8,6]], dtype=float)
+mask = np.array([[1,1,1,0,1],
+                [1,1,0,1,1]], dtype=bool)
 
-ri = np.where(mask.flatten())[0]
-b = test.flatten()[ri].astype(float)
+ri = np.where(mask.T.flatten())[0]
+b = test.T.flatten()[ri].astype(float)
 ny, nx = test.shape
 
 set_global_param(b, (ny, nx), ri)
 
-out = owlqn(nx * ny, evaluate, progress, 0.5)
+out = owlqn(nx * ny, evaluate, progress, 0.005)
+print(out.max(), out.min())
+print(idwt2_haar_recursive(out.reshape((nx, ny)).T))
 
 test = Image.open("/scratchdata/depth_prompting_nyu/gt/0.png")
 test = np.array(test, dtype=float)
