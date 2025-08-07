@@ -9,7 +9,7 @@ global _b_vector, _A_matrix, _image_dims, _ri_vector
 def dwt2_haar_recursive(arr):
     coeffs = np.zeros_like(arr)
     height, width = arr.shape
-    if height == 1 or width == 1:
+    if height == 1 and width == 1:
         return arr
     
     A, (H, V, D) = pywt.dwt2(arr, 'haar')
@@ -24,7 +24,7 @@ def dwt2_haar_recursive(arr):
 def idwt2_haar_recursive(coeffs):
     
     height, width = coeffs.shape
-    if height == 1 or width == 1:
+    if height == 1 and width == 1:
         return coeffs
     A = coeffs[:(height+1)//2, :(width+1)//2]
     A = idwt2_haar_recursive(A)
@@ -143,8 +143,7 @@ ny, nx = test.shape
 
 set_global_param(b, (ny, nx), ri)
 
-out = owlqn(nx * ny, evaluate, progress, 0.005)
-print(out.max(), out.min())
+out = owlqn(nx * ny, evaluate, progress, 0.00005)
 print(idwt2_haar_recursive(out.reshape((nx, ny)).T))
 
 test = Image.open("/scratchdata/depth_prompting_nyu/gt/0.png")
