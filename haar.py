@@ -7,12 +7,12 @@ import matplotlib.pyplot as plt
 global _b_vector, _A_matrix, _image_dims, _ri_vector
 
 def dwt2_haar_recursive(arr):
-    coeffs = np.zeros_like(arr)
+    coeffs = np.zeros_like(arr, dtype=float)
     height, width = arr.shape
     if height == 1 and width == 1:
         return arr
     
-    A, (H, V, D) = pywt.dwt2(arr, 'haar')
+    A, (H, V, D) = pywt.dwt2(arr, 'haar', mode='periodization')
     coeffs[:(height+1)//2, (width+1)//2:] = V[:(height+1)//2, :width - (width+1)//2]
     coeffs[(height+1)//2:, :(width+1)//2] = H[:height-(height+1)//2, :(width+1)//2]
     coeffs[(height+1)//2:, (width+1)//2:] = D[:height-(height+1)//2, :width - (width+1)//2]
@@ -26,18 +26,14 @@ def idwt2_haar_recursive(coeffs):
     height, width = coeffs.shape
     if height == 1 and width == 1:
         return coeffs
+    coeffs = np.pad(coeffs, ((0, height%2), (0, width%2)), mode='constant')  # Ensure even dimensions for IDWT
     A = coeffs[:(height+1)//2, :(width+1)//2]
     A = idwt2_haar_recursive(A)
     V = coeffs[:(height+1)//2, (width+1)//2:]
     H = coeffs[(height+1)//2:, :(width+1)//2]
     D = coeffs[(height+1)//2:, (width+1)//2:]
-        
-    # Pad H, V, D to match A
-    H = np.pad(H, ((0, A.shape[0] - H.shape[0]), (0, A.shape[1] - H.shape[1])), mode='constant')
-    V = np.pad(V, ((0, A.shape[0] - V.shape[0]), (0, A.shape[1] - V.shape[1])), mode='constant')
-    D = np.pad(D, ((0, A.shape[0] - D.shape[0]), (0, A.shape[1] - D.shape[1])), mode='constant')
 
-    arr = pywt.idwt2((A, (H,V,D)), 'haar')
+    arr = pywt.idwt2((A, (H,V,D)), 'haar', mode='periodization')
     arr = arr[:height, :width]  # Ensure the output matches the original shape
     return arr
 
@@ -126,7 +122,7 @@ def rescale_ratio(depth, est, ORTHANTWISE_C=5, relative_C=None):
 
     return spfft.idctn(out.reshape((nx, ny)).T, norm='ortho') + 1
 
-test = np.array([[1, 2, 4,5,6,7],[5,7,8,4,6,7]])
+test = np.array([[0, 5, 4, 2, 4, 4]])
 tmp = dwt2_haar_recursive(test)
 print(tmp)
 print(idwt2_haar_recursive(tmp))
