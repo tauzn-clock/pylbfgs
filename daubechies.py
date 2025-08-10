@@ -4,10 +4,8 @@ import pywt
 from PIL import Image
 import matplotlib.pyplot as plt
 
-global _b_vector, _A_matrix, _image_dims, _ri_vector
-
-def dwt2_db_recursive(arr):
-    coeffs = np.zeros_like(arr)
+def dwt2_db_recursive(arr, scale):
+    coeffs = np.zeros_like(arr, dtype=float)
     height, width = arr.shape
     if height == 1 and width == 1:
         return arr
@@ -16,33 +14,27 @@ def dwt2_db_recursive(arr):
     coeffs[:(height+1)//2, (width+1)//2:] = V[:(height+1)//2, :width - (width+1)//2]
     coeffs[(height+1)//2:, :(width+1)//2] = H[:height-(height+1)//2, :(width+1)//2]
     coeffs[(height+1)//2:, (width+1)//2:] = D[:height-(height+1)//2, :width - (width+1)//2]
-    A = dwt2_db_recursive(A)
+    A = dwt2_db_recursive(A, scale) /scale
     coeffs[:(height+1)//2, :(width+1)//2] = A[:(height+1)//2, :(width+1)//2]
      
     return coeffs
 
-def idwt2_db_recursive(coeffs):
-    
+def idwt2_db_recursive(coeffs,scale):
     height, width = coeffs.shape
-    print(height, width)
     if height == 1 and width == 1:
         return coeffs
+    coeffs = np.pad(coeffs, ((0, height%2), (0, width%2)), mode='constant')  # Ensure even dimensions for IDWT
     A = coeffs[:(height+1)//2, :(width+1)//2]
-    A = idwt2_db_recursive(A)
+    A = idwt2_db_recursive(A,scale) * scale
     V = coeffs[:(height+1)//2, (width+1)//2:]
     H = coeffs[(height+1)//2:, :(width+1)//2]
     D = coeffs[(height+1)//2:, (width+1)//2:]
-        
-    # Pad H, V, D to match A
-    H = np.pad(H, ((0, A.shape[0] - H.shape[0]), (0, A.shape[1] - H.shape[1])), mode='edge')
-    V = np.pad(V, ((0, A.shape[0] - V.shape[0]), (0, A.shape[1] - V.shape[1])), mode='edge')
-    D = np.pad(D, ((0, A.shape[0] - D.shape[0]), (0, A.shape[1] - D.shape[1])), mode='edge')
 
     arr = pywt.idwt2((A, (H,V,D)), 'db2', mode='periodization')
     arr = arr[:height, :width]  # Ensure the output matches the original shape
     return arr
 
-def set_global_param(b_vector, image_dims, ri_vector):
+def set_global_param(b_vector, image_dims, ri_vector, scale):
     """Set the global parameters for the evaluation function.
     
     Args:
@@ -50,10 +42,11 @@ def set_global_param(b_vector, image_dims, ri_vector):
         image_dims (tuple): The dimensions of the image (ny, nx).
         ri_vector (np.ndarray): The sampling vector indicating valid indices.
     """
-    global _b_vector, _image_dims, _ri_vector
+    global _b_vector, _image_dims, _ri_vector, _scale
     _b_vector = b_vector
     _image_dims = image_dims
     _ri_vector = ri_vector
+    _scale = scale
 
 def evaluate(x, g, step):
     """An in-memory evaluation callback.
@@ -127,22 +120,19 @@ def rescale_ratio(depth, est, ORTHANTWISE_C=5, relative_C=None):
 
     return spfft.idctn(out.reshape((nx, ny)).T, norm='ortho') + 1
 
-print(pywt.dwt2(np.array([[1, 2, 4,5,6,7],[5,7,8,4,6,7]]), 'db2', mode='periodization'))
+test = np.array([[1,2,3,4],[6,7,8,9]])
+print(dwt2_db_recursive(test,2))
+print()
+mask = np.array([[1,1,1,0],[1,1,0,1]])
+ri = np.where(mask.T.flatten())[0]
+b = test.T.flatten()[ri].astype(float)
+ny, nx = test.shape
+set_global_param(b, (ny,nx), ri, 2)
+out = owlqn(nx * ny, evaluate, progress, 500)
+print(out.reshape((nx, ny)).T)
+print(dwt2_db_recursive(test*mask,2))
+print(idwt2_db_recursive(out.reshape((nx, ny)).T, 2))
 
-test = np.array([[1,2,3,4,5],
-                 [6,7,8,9,10],
-                 [11,12,13,14,15],
-                [16,17,18,19,20],
-                [21,22,23,24,25]], dtype=float)
-mask = np.array([[1,1,1,0,1],
-                 [1,1,0,1,1],
-                 [1,1,1,1,1],
-                 [1,1,0,1,1],
-                 [0,1,1,1,0]], dtype=bool)
-test = np.array([[1, 2, 4,5,6,7],[5,7,8,4,6,7]])
-tmp = dwt2_db_recursive(test)
-print(tmp)
-print(idwt2_db_recursive(tmp))
 exit()
 
 test = Image.open("/scratchdata/depth_prompting_nyu/gt/0.png")
