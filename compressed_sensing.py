@@ -2,8 +2,6 @@ from pylbfgs import owlqn
 import scipy.fft as spfft
 import numpy as np
 
-global _b_vector, _A_matrix, _image_dims, _ri_vector
-
 def set_global_param(b_vector, image_dims, ri_vector):
     """Set the global parameters for the evaluation function.
     
@@ -45,6 +43,7 @@ def evaluate(x, g, step):
     # project residual vector (k x 1) onto blank image (ny x nx)
     Axb2 = np.zeros(x2.shape)
     Axb2.T.flat[_ri_vector] = Axb  # fill columns-first
+    print(Axb2)
 
     # A'(Ax-b) is just the 2D dct of Axb2
     AtAxb2 = 2 * spfft.dctn(Axb2, norm='ortho')
@@ -102,3 +101,15 @@ def rescale_ratio_proportional(depth, est):
     ratio *= multiplier
 
     return ratio
+
+if __name__ == "__main__":
+    test = np.array([[1,2,3,4,5],[6,7,8,9,10]])
+    print(spfft.dctn(test))
+    mask = np.array([[1,1,1,0,1],[1,1,0,1,1]])
+    ri = np.where(mask.T.flatten())[0]
+    b = test.T.flatten()[ri].astype(float)
+    ny, nx = test.shape
+    set_global_param(b, (ny,nx), ri)
+    out = owlqn(nx * ny, evaluate, progress, 0.05)
+    print(out.reshape((nx, ny)).T)
+    print(spfft.idctn(out.reshape((nx, ny)).T, norm='ortho'))
