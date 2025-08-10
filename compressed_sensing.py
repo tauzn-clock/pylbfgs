@@ -43,7 +43,6 @@ def evaluate(x, g, step):
     # project residual vector (k x 1) onto blank image (ny x nx)
     Axb2 = np.zeros(x2.shape)
     Axb2.T.flat[_ri_vector] = Axb  # fill columns-first
-    print(Axb2)
 
     # A'(Ax-b) is just the 2D dct of Axb2
     AtAxb2 = 2 * spfft.dctn(Axb2, norm='ortho')
@@ -103,9 +102,13 @@ def rescale_ratio_proportional(depth, est):
     return ratio
 
 if __name__ == "__main__":
-    test = np.array([[1,2,3,4,5],[6,7,8,9,10]])
-    print(spfft.dctn(test))
-    mask = np.array([[1,1,1,0,1],[1,1,0,1,1]])
+    test = np.array([[1,2],[3,4]])
+    mask = np.array([[1,1],[1,0]])
+
+    print(spfft.dctn(test,1))
+    print(spfft.dctn(test*mask,1))
+    print()
+
     ri = np.where(mask.T.flatten())[0]
     b = test.T.flatten()[ri].astype(float)
     ny, nx = test.shape
