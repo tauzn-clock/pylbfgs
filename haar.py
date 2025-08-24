@@ -4,28 +4,28 @@ import pywt
 from PIL import Image
 import matplotlib.pyplot as plt
 
-def dwt2_haar_recursive(arr, scale):
+def dwt2_haar_recursive(arr, scale, r=-1):
     coeffs = np.zeros_like(arr, dtype=float)
     height, width = arr.shape
-    if height == 1 and width == 1:
+    if (height == 1 and width == 1) or r==0:
         return arr
     
     A, (H, V, D) = pywt.dwt2(arr, 'haar', mode='periodization')
     coeffs[:(height+1)//2, (width+1)//2:] = V[:(height+1)//2, :width - (width+1)//2]
     coeffs[(height+1)//2:, :(width+1)//2] = H[:height-(height+1)//2, :(width+1)//2]
     coeffs[(height+1)//2:, (width+1)//2:] = D[:height-(height+1)//2, :width - (width+1)//2]
-    A = dwt2_haar_recursive(A, scale) / scale
+    A = dwt2_haar_recursive(A, scale,r-1) / scale
     coeffs[:(height+1)//2, :(width+1)//2] = A[:(height+1)//2, :(width+1)//2]
      
     return coeffs
 
-def idwt2_haar_recursive(coeffs, scale):    
+def idwt2_haar_recursive(coeffs, scale, r=-1):    
     height, width = coeffs.shape
-    if height == 1 and width == 1:
+    if (height == 1 and width == 1) or r==0:
         return coeffs
     coeffs = np.pad(coeffs, ((0, height%2), (0, width%2)), mode='constant')  # Ensure even dimensions for IDWT
     A = coeffs[:(height+1)//2, :(width+1)//2]
-    A = idwt2_haar_recursive(A, scale) * scale
+    A = idwt2_haar_recursive(A, scale,r-1) * scale
     V = coeffs[:(height+1)//2, (width+1)//2:]
     H = coeffs[(height+1)//2:, :(width+1)//2]
     D = coeffs[(height+1)//2:, (width+1)//2:]
@@ -106,7 +106,7 @@ def rescale_ratio(depth, est, scale, ORTHANTWISE_C=5, relative_C=None):
     ratio = depth / est
     ri = ratio !=0
     ratio[~ri] = 1
-    ratio -= 1
+    ratio = np.log(ratio)
     ri = np.where(ri.T.flatten())[0]
     b = ratio.T.flatten()[ri].astype(float)
     ny, nx = ratio.shape
@@ -118,36 +118,40 @@ def rescale_ratio(depth, est, scale, ORTHANTWISE_C=5, relative_C=None):
     
     out = owlqn(nx * ny, evaluate, progress, ORTHANTWISE_C)
 
-    return idwt2_haar_recursive(out.reshape((nx, ny)).T, 2) + 1
+    return np.exp(idwt2_haar_recursive(out.reshape((nx, ny)).T, 2))
 
-test = np.array([[1,2,3,4,5],[6,7,8,9,10]])
-print(dwt2_haar_recursive(test,2))
-print()
-mask = np.array([[1,1,1,0,1],[1,1,0,1,1]])
-ri = np.where(mask.T.flatten())[0]
-b = test.T.flatten()[ri].astype(float)
-ny, nx = test.shape
-set_global_param(b, (ny,nx), ri, 2)
-out = owlqn(nx * ny, evaluate, progress, 0.0000005)
-print(out.reshape((nx, ny)).T)
-print(dwt2_haar_recursive(test*mask,2))
-print(idwt2_haar_recursive(out.reshape((nx, ny)).T, 2))
+if __name__ == "__main__":
+    i = 300
+    Xorig = Image.open(f"/scratchdata/depth_prompting_nyu/gt/{i}.png")
+    Xorig = np.array(Xorig, dtype=float) / 1000
+    Xpred = Image.open(f"/scratchdata/depth_prompting_nyu/depthformer/{i}.png")
+    Xpred = np.array(Xpred, dtype=float) / 1000
 
-exit()
+    tmp = dwt2_haar_recursive(Xorig, scale=4)
+    print(tmp.max(), tmp.min())
 
-Xorig = Image.open("/scratchdata/depth_prompting_nyu/gt/0.png")
-Xorig = np.array(Xorig, dtype=float)
-Xpred = Image.open("/scratchdata/depth_prompting_nyu/depthformer/0.png")
-Xpred = np.array(Xpred, dtype=float)
+    np.random.seed(42)
+    R = 0.5
+    # Sample some r percent of the pixels
+    Xsample = Xorig.copy()
+    mask = np.random.rand(*Xorig.shape) < R
+    Xsample[~mask] = 0  # Set unselected pixels to 0
+    plt.imsave("sampled.png", Xsample, cmap='gray')
 
-R = 0.9
-# Sample some r percent of the pixels
-Xsample = Xorig.copy()
-mask = np.random.rand(*Xorig.shape) < R
-Xsample[~mask] = 0  # Set unselected pixels to 0
+    new_ratio = rescale_ratio(Xsample, Xpred, scale=4, ORTHANTWISE_C=0.00005)
+    print(new_ratio.max(), new_ratio.min())
+    plt.imsave("ratio.png", new_ratio, cmap='gray')
 
-plt.imsave("sampled.png", Xsample, cmap='gray')
+    exit()
 
-new_ratio = rescale_ratio(Xsample, Xpred, scale=2, ORTHANTWISE_C=0.05)
-print(new_ratio.max(), new_ratio.min())
-plt.imsave("ratio.png", new_ratio, cmap='gray')
+    scale = 1
+    test = np.array([[1,2,3,4,5],[-1,-2,-3,-4,-5]]) 
+    print(dwt2_haar_recursive(test,scale))
+    mask = np.array([[1,1,1,0,1],[1,1,0,1,1]])
+    ri = np.where(mask.T.flatten())[0]
+    b = test.T.flatten()[ri].astype(float)
+    ny, nx = test.shape
+    set_global_param(b, (ny,nx), ri, scale)
+    out = owlqn(nx * ny, evaluate, progress, 0.00005)
+    print(out.reshape((nx, ny)).T)
+    print(idwt2_haar_recursive(out.reshape((nx, ny)).T, scale))
