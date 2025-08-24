@@ -72,7 +72,7 @@ def rescale_ratio(depth, est, ORTHANTWISE_C=5, relative_C=None):
     ratio = depth / est
     ri = ratio !=0
     ratio[~ri] = 1
-    ratio -= 1
+    ratio = np.log(ratio)
     #print("Ratio max, min:", ratio.max(), ratio.min())
     ri = np.where(ri.T.flatten())[0]
     b = ratio.T.flatten()[ri].astype(float)
@@ -85,7 +85,7 @@ def rescale_ratio(depth, est, ORTHANTWISE_C=5, relative_C=None):
     
     out = owlqn(nx * ny, evaluate, progress, ORTHANTWISE_C)
 
-    return spfft.idctn(out.reshape((nx, ny)).T, norm='ortho') + 1
+    return np.exp(spfft.idctn(out.reshape((nx, ny)).T, norm='ortho'))
 
 def rescale_ratio_proportional(depth, est):
     mask = depth > 0

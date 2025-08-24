@@ -2,6 +2,7 @@ from compressed_sensing import rescale_ratio, rescale_ratio_proportional
 
 import os
 import numpy as np
+np.random.seed(42)
 from PIL import Image
 import matplotlib.pyplot as plt
 import cv2
@@ -11,7 +12,7 @@ store = []
 store_prop = []
 benchmark = []
 
-for i in range(230,N):
+for i in range(0,N):
     DEPTH_IMAGE_PATH = f"/scratchdata/depth_prompting_nyu/gt/{i}.png"
     EST_IMAGE_PATH = f"/scratchdata/depth_prompting_nyu/depthformer/{i}.png"
 
@@ -58,9 +59,7 @@ for i in range(230,N):
     store.append(evaluateMetrics(Xorig, final_depth))
     store_prop.append(evaluateMetrics(Xorig, final_depth_prop))
     benchmark.append(evaluateMetrics(Xorig, Xpred))
-   
-    break
-   
+      
 store = np.array(store)
 store_prop = np.array(store_prop)
 benchmark = np.array(benchmark) 
