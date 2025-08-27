@@ -1,4 +1,4 @@
-from compressed_sensing import rescale_ratio, rescale_ratio_proportional
+from compressed_sensing import rescale_ratio, rescale_ratio_proportional, reconstruct_direct
 
 import os
 import numpy as np
@@ -6,10 +6,12 @@ np.random.seed(42)
 from PIL import Image
 import matplotlib.pyplot as plt
 import cv2
+from metric import evaluateMetrics
 
-N = 654
+N = 100 # 654
 store = []
 store_prop = []
+store_direct = []
 benchmark = []
 
 for i in range(0,N):
@@ -28,44 +30,51 @@ for i in range(0,N):
     Xpred /= 1000  # convert to meters
     #print(Xpred.shape)
     #print(Xpred.max(), Xpred.min())
-    plt.imsave("ratio_gt.png", Xorig/Xpred, cmap='gray')
+    #plt.imsave("ratio_gt.png", Xorig/Xpred, cmap='gray')
 
     R = 0.1
     # Sample some r percent of the pixels
     Xsample = Xorig.copy()
     mask = np.random.rand(*Xpred.shape) < R
     Xsample[~mask] = 0  # Set unselected pixels to 0
-    plt.imsave("sampled.png", Xsample, cmap='gray')
+    #plt.imsave("sampled.png", Xsample, cmap='gray')
     #print(Xsample.max(), Xsample.min())
 
+    # Ratio
     new_ratio = rescale_ratio(Xsample, Xpred, relative_C=0.05)
-    print('New ratio image max, min: {}, {}'.format(new_ratio.max(), new_ratio.min()))
-    plt.imsave("ratio.png", new_ratio, cmap='gray')
-
     final_depth = Xpred * new_ratio
     mask = Xsample != 0  # Create a mask for the sampled pixels
     final_depth = (final_depth * ~mask) + (Xsample * mask)  # Combine original and new depth
-    print('Final depth image max, min: {}, {}'.format(final_depth.max(), final_depth.min()))
+    #print('New ratio image max, min: {}, {}'.format(new_ratio.max(), new_ratio.min()))
+    #plt.imsave("ratio.png", new_ratio, cmap='gray')
+    #print('Final depth image max, min: {}, {}'.format(final_depth.max(), final_depth.min()))
 
-    #Image.fromarray(final_depth.astype(np.uint16)).save('final_depth_image.png')
     #plt.imsave("vis.png", final_depth, cmap='gray')
     
+    # Ratio Prop
     new_ratio_prop = rescale_ratio_proportional(Xsample, Xpred)
     final_depth_prop = Xpred * new_ratio_prop
     mask_prop = Xsample != 0  # Create a mask for the sampled pixels
     final_depth_prop = (final_depth_prop * ~mask_prop) + (Xsample * mask_prop)  # Combine original and new depth
 
-    from metric import evaluateMetrics
+    # Direct  
+    new_ratio_direct = reconstruct_direct(Xsample, relative_C=0.005)
+    print(new_ratio_direct.max(), new_ratio_direct.min())
+    plt.imsave("direct.png", new_ratio_direct, cmap='gray')
+
     store.append(evaluateMetrics(Xorig, final_depth))
     store_prop.append(evaluateMetrics(Xorig, final_depth_prop))
+    store_direct.append(evaluateMetrics(Xorig, new_ratio_direct))
     benchmark.append(evaluateMetrics(Xorig, Xpred))
       
 store = np.array(store)
 store_prop = np.array(store_prop)
-benchmark = np.array(benchmark) 
+store_direct = np.array(store_direct)
+benchmark = np.array(benchmark)
 #print(store.shape)
 #print(benchmark.shape)
 
 print(store.mean(axis=0))
 print(store_prop.mean(axis=0))
+print(store_direct.mean(axis=0))
 print(benchmark.mean(axis=0))
