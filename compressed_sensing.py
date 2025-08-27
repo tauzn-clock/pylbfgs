@@ -87,6 +87,21 @@ def rescale_ratio(depth, est, ORTHANTWISE_C=5, relative_C=None):
 
     return np.exp(spfft.idctn(out.reshape((nx, ny)).T, norm='ortho'))
 
+def reconstruct_direct(depth, ORTHANTWISE_C=5, relative_C=None):
+    ri = depth != 0
+    ri = np.where(ri.T.flatten())[0]
+    b = depth.T.flatten()[ri].astype(float)
+    ny, nx = depth.shape
+
+    set_global_param(b, (ny, nx), ri)
+
+    if not relative_C is None:
+        ORTHANTWISE_C = np.mean(np.abs(b)) * relative_C
+
+    out = owlqn(nx * ny, evaluate, progress, ORTHANTWISE_C)
+
+    return spfft.idctn(out.reshape((nx, ny)).T, norm='ortho')
+
 def rescale_ratio_proportional(depth, est):
     mask = depth > 0
     valid_depth = depth[mask]
@@ -95,7 +110,7 @@ def rescale_ratio_proportional(depth, est):
     ratio = np.ones_like(depth)
     multiplier = np.sum(valid_depth* valid_est) / np.sum(valid_est**2)
 
-    print("Multiplier:", multiplier)
+    #print("Multiplier:", multiplier)
     
     ratio *= multiplier
 
